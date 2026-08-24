@@ -33,9 +33,22 @@ def callback_download(message_call):
     status_msg = bot.send_message(chat_id, "⏳ Yuklanmoqda...")
 
     ydl_opts = {
-    'format': 'best',
-    'outtmpl': '%(id)s.%(ext)s',
-    'extractor_args': {'youtube': {'player_client': ['android', 'web']}},  # <- Mana shu qatorni qo'shing
+    'format': 'best' if is_video else 'bestaudio/best',
+    'outtmpl': f'{chat_id}_download.%(ext)s',
+    'extractor_args': {
+        'youtube': {
+            'player_client': ['ios', 'mweb', 'tv'],
+            'skip': ['webpage', 'configs']
+        }
+    },
+    'http_headers': {
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+        'Accept-Language': 'en-US,en;q=0.9',
+    },
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
 }
 
     if message_call.data == "download_audio":
