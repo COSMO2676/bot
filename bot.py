@@ -43,7 +43,8 @@ def generate_image(message):
     try:
         # Promptni to'g'ridan-to'g'ri URL formatiga o'tkazish
         encoded_prompt = urllib.parse.quote(prompt)
-        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1080&nologo=true"
+        image_url = f"https://image.pollinations.ai/pro
+       
         
         bot.send_photo(message.chat.id, image_url, caption=f"🖼 Natija: {prompt}")
         bot.delete_message(message.chat.id, msg.message_id)
