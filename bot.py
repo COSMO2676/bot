@@ -5,7 +5,7 @@ from flask import Flask
 from threading import Thread
 import yt_dlp
 
-TOKEN = 'YOUR_BOT_TOKEN_HERE'  # <- Shu yerga o'z bot tokeningizni qo'ying!
+TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'  # <- Shu yerga o'z bot tokeningizni qo'ying!
 bot = telebot.TeleBot(TOKEN)
 
 app = Flask('')
