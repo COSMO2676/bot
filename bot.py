@@ -1,92 +1,91 @@
 import os
 import telebot
-from telebot import types
+import requests
+import urllib.parse
+from flask import Flask
+from threading import Thread
 import yt_dlp
 
-TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'
-bot = telebot.TeleBot(TOKEN, threaded=True)
+# Telegram Bot Tokeningizni shu yerga qo'ying
+TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'  # <- Shu yerga o'z tokeningizni qo'ying!
+bot = telebot.TeleBot(TOKEN)
 
-user_links = {}
+# Render uchun kichik server (port xatosini oldini olish uchun)
+app = Flask('')
 
+@app.route('/')
+def home():
+    return "Bot faol ishlamoqda!"
+
+def run():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
+Thread(target=run).start()
+
+# Start buyrug'i
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    bot.reply_to(message, "Salom! Menga YouTube yoki Instagram linkini yuboring.")
+    text = (
+        "👋 Xush kelibsiz!\n\n"
+        "Men sizga quyidagi vazifalarda yordam bera olaman:\n"
+        "1. Instagram Video Yuklash: Instagram reel/post havolasini yuboring.\n"
+        "2. AI Rasm Generatsiya: /rasm so'zidan keyin rasm tasvirini yozing.\n\n"
+        "✨ *Misol:* /rasm cyberpunk anime warrior in neon city"
+    )
+    bot.reply_to(message, text, parse_mode="Markdown")
 
-@bot.message_handler(func=lambda message: message.text and ("youtube.com" in message.text or "youtu.be" in message.text or "instagram.com" in message.text))
-def handle_link(message):
-    user_links[message.chat.id] = message.text
-    markup = types.InlineKeyboardMarkup()
-    btn_video = types.InlineKeyboardButton("🎬 Video", callback_data="download_video")
-    btn_audio = types.InlineKeyboardButton("🎵 Musiqa", callback_data="download_audio")
-    markup.add(btn_video, btn_audio)
-    bot.send_message(message.chat.id, "Formatni tanlang:", reply_markup=markup)
-
-@bot.callback_query_handler(func=lambda call: call.data in ["download_video", "download_audio"])
-def callback_download(message_call):
-    chat_id = message_call.message.chat.id
-    url = user_links.get(chat_id)
-
-    if not url:
-        bot.send_message(chat_id, "📌 Iltimos, avval linkni yuboring!")
+# AI Rasm Yaratish (/rasm command)
+@bot.message_handler(commands=['rasm'])
+def generate_image(message):
+    prompt = message.text.replace('/rasm', '').strip()
+    
+    if not prompt:
+        bot.reply_to(message, "⚠️ Iltimos, rasm tasvirini ham yozing!\nMisol: /rasm neon anime character", parse_mode="Markdown")
         return
 
-    status_msg = bot.send_message(chat_id, "⏳ Yuklanmoqda...")
+    msg = bot.reply_to(message, "🎨 Rasm chizilmoqda, biroz kuting...")
+    
+    try:
+        # Promptni URL formatiga o'tkazish
+        encoded_prompt = urllib.parse.quote(prompt)
+        image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1080&nologo=true"
+        
+        # Rasmni Telegram'ga yuborish
+        bot.send_photo(message.chat.id, image_url, caption=f"🖼 Natija: {prompt}")
+        bot.delete_message(message.chat.id, msg.message_id)
+    except Exception as e:
+        bot.edit_message_text(f"❌ Rasm yaratishda xatolik yuz berdi.", message.chat.id, msg.message_id)
 
+# Instagram Video Yuklash
+@bot.message_handler(func=lambda message: 'instagram.com' in message.text)
+def download_instagram(message):
+    url = message.text.strip()
+    msg = bot.reply_to(message, "📥 Video yuklanmoqda, kuting...")
+    
+    chat_id = message.chat.id
+    file_path = f"{chat_id}_insta.mp4"
+    
     ydl_opts = {
-    'format': 'best' if is_video else 'bestaudio/best',
-    'outtmpl': f'{chat_id}_download.%(ext)s',
-    'extractor_args': {
-        'youtube': {
-            'player_client': ['ios', 'mweb', 'tv'],
-            'skip': ['webpage', 'configs']
-        }
-    },
-    'http_headers': {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
-        'Accept-Language': 'en-US,en;q=0.9',
-    },
-    'nocheckcertificate': True,
-    'ignoreerrors': False,
-    'logtostderr': False,
-    'quiet': True,
-}
-
-    if message_call.data == "download_audio":
-        ydl_opts['format'] = 'bestaudio/best'
-        ydl_opts['postprocessors'] = [{
-            'key': 'FFmpegExtractAudio',
-            'preferredcodec': 'mp3',
-            'preferredquality': '192',
-        }]
+        'format': 'best',
+        'outtmpl': file_path,
+        'quiet': True
+    }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            filename = ydl.prepare_filename(info)
-
-        if message_call.data == "download_video":
-            file_path = os.path.splitext(filename)[0] + '.mp4' if not filename.endswith('.mp4') else filename
-            if os.path.exists(file_path):
-                with open(file_path, 'rb') as video:
-                    bot.send_video(chat_id, video, caption="🎬 Video yuklandi!")
-        else:
-            file_path = os.path.splitext(filename)[0] + '.mp3'
-            if os.path.exists(file_path):
-                with open(file_path, 'rb') as audio:
-                    bot.send_audio(chat_id, audio, caption="🎵 Musiqa yuklandi!")
-
+            ydl.download([url])
+            
+        with open(file_path, 'rb') as video:
+            bot.send_video(chat_id, video)
+            
+        bot.delete_message(chat_id, msg.message_id)
+        if os.path.exists(file_path):
+            os.remove(file_path)
     except Exception as e:
-        print("Xatolik:", e)
-        bot.send_message(chat_id, f"❌ Xatolik yuz berdi: {str(e)[:100]}")
+        bot.edit_message_text("❌ Videoni yuklashda xatolik yuz berdi.", chat_id, msg.message_id)
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
-    finally:
-        for file in os.listdir():
-            if str(chat_id) in file and not file.endswith('.py'):
-                try:
-                    os.remove(file)
-                except Exception:
-                    pass
-        bot.delete_message(chat_id, status_msg.message_id)
-
-print("Bot ishga tushdi...")
-bot.infinity_polling(timeout=300, long_polling_timeout=300)
+# Botni ishga tushirish
+bot.infinity_polling()
