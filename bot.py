@@ -1,12 +1,11 @@
 import os
 import telebot
-import requests
 import urllib.parse
 from flask import Flask
 from threading import Thread
 import yt_dlp
 
-TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'  # <- Shu yerga bot tokeningizni qo'ying!
+TOKEN = 'YOUR_BOT_TOKEN_HERE'  # <- Shu yerga o'z bot tokeningizni qo'ying!
 bot = telebot.TeleBot(TOKEN)
 
 app = Flask('')
@@ -21,43 +20,32 @@ def run():
 
 Thread(target=run).start()
 
-# O'zbekchadan inglizchaga tarjima qilish funksiyasi
-def translate_to_en(text):
-    try:
-        url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(text)}&langpair=uz|en"
-        response = requests.get(url).json()
-        translated_text = response['responseData']['translatedText']
-        return translated_text
-    except Exception as e:
-        print(f"Translation Error: {e}")
-        return text
-
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     text = (
         "👋 Xush kelibsiz!\n\n"
-        "1. Instagram Video Yuklash: Instagram reel/post havolasini yuboring.\n"
+        "1. Instagram Video Yuklash: Instagram havolasini yuboring.\n"
         "2. AI Rasm Generatsiya: /rasm so'zidan keyin rasm tasvirini yozing.\n\n"
-        "✨ *Misol:* /rasm qizil mashina"
+        "✨ *Maslahat:* Aniqroq rasm chiqishi uchun ingliz tilida yozing (masalan: /rasm giant green hulk angry)."
     )
     bot.reply_to(message, text, parse_mode="Markdown")
 
 @bot.message_handler(commands=['rasm'])
 def generate_image(message):
-    original_prompt = message.text.replace('/rasm', '').strip()
+    prompt = message.text.replace('/rasm', '').strip()
     
-    if not original_prompt:
-        bot.reply_to(message, "⚠️ Iltimos, rasm tasvirini ham yozing!\nMisol: /rasm qizil mashina", parse_mode="Markdown")
+    if not prompt:
+        bot.reply_to(message, "⚠️ Iltimos, rasm tasvirini yozing!\nMisol: /rasm hulk", parse_mode="Markdown")
         return
 
     msg = bot.reply_to(message, "🎨 Rasm chizilmoqda, biroz kuting...")
     
     try:
-        english_prompt = translate_to_en(original_prompt)
-        encoded_prompt = urllib.parse.quote(english_prompt)
+        # Promptni to'g'ridan-to'g'ri URL formatiga o'tkazish
+        encoded_prompt = urllib.parse.quote(prompt)
         image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?width=1080&height=1080&nologo=true"
         
-        bot.send_photo(message.chat.id, image_url, caption=f"🖼 Natija: {original_prompt}")
+        bot.send_photo(message.chat.id, image_url, caption=f"🖼 Natija: {prompt}")
         bot.delete_message(message.chat.id, msg.message_id)
     except Exception as e:
         bot.edit_message_text("❌ Rasm yaratishda xatolik yuz berdi.", message.chat.id, msg.message_id)
