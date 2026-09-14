@@ -3,7 +3,7 @@ import telebot
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
-TOKEN = '8605363844:AAHqMunym...' # Yangi tokeningiz
+TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'
 ADMIN_CHAT_ID = '8773126526'
 
 bot = telebot.TeleBot(TOKEN)
