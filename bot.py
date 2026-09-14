@@ -7,7 +7,7 @@ TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'
 ADMIN_CHAT_ID = '8773126526'
 
 bot = telebot.TeleBot(TOKEN)
-app = Flask(name)
+app = Flask(__name__)
 CORS(app)
 
 @app.route('/')
